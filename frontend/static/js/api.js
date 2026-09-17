@@ -22,7 +22,7 @@
 
 (() => {
   /* ── Configuration ──────────────────────────────────────── */
-  const BASE  = 'http://localhost:5000/api';
+  const BASE = 'https://codetrace-ast-detector1.onrender.com/api';
   const R_KEY = 'ct_last_result';
 
   /* ── Guard: prevent redirect storms ────────────────────── */
