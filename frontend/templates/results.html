@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Results – CodeTrace</title>
+  <meta name="description" content="View detailed similarity analysis results including code structure, AST patterns, and detection status." />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <header class="top-bar">
+      <span class="top-bar-title">Analysis Results</span>
+      <div class="top-bar-actions">
+        <a href="analyze.html" class="btn btn-primary btn-sm" id="new-analysis-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          New Analysis
+        </a>
+      </div>
+    </header>
+
+    <main class="page-body">
+      <div class="page-header">
+        <h1>Analysis Results</h1>
+        <p class="subtitle" id="results-subtitle">Detailed similarity breakdown for the analyzed files</p>
+      </div>
+
+      <!-- No Data State -->
+      <div id="no-results" style="display:none;">
+        <div class="card empty-state" style="padding:60px 32px;">
+          <div class="empty-state-icon">📋</div>
+          <div class="empty-state-title">No analysis results yet</div>
+          <div class="empty-state-sub" style="margin-bottom:20px;">Run an analysis on the Analyze page to see results here</div>
+          <a href="analyze.html" class="btn btn-primary">Start Analysis</a>
+        </div>
+      </div>
+
+      <!-- Result Selector (when multiple pairs exist) -->
+      <div id="result-selector-wrap" style="display:none;margin-bottom:20px;">
+        <div class="card" style="padding:16px 20px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:.82rem;font-weight:600;color:var(--text-2);">Viewing result:</span>
+            <select id="result-selector" class="form-control" style="max-width:340px;padding:7px 12px;">
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results Content -->
+      <div id="results-content" style="display:none;">
+
+        <!-- Row 1: Compared Files + Similarity Breakdown -->
+        <div class="results-grid">
+
+          <!-- Section 1: Compared Files -->
+          <div class="card compared-files-card">
+            <div class="card-title">Section 1 — Compared Files</div>
+            <h3 style="font-size:.95rem;font-weight:700;color:var(--text-1);margin:10px 0 16px;">Compared Files</h3>
+            <div class="file-compare-display">
+              <div class="file-box">
+                <div class="file-box-label">File 1</div>
+                <div class="file-box-name" id="res-file1">—</div>
+                <div class="file-box-type" id="res-type1">—</div>
+              </div>
+              <div class="vs-divider">↔</div>
+              <div class="file-box">
+                <div class="file-box-label">File 2</div>
+                <div class="file-box-name" id="res-file2">—</div>
+                <div class="file-box-type" id="res-type2">—</div>
+              </div>
+            </div>
+
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-light);">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <div>
+                  <div style="font-size:.72rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Overall Similarity</div>
+                  <div style="font-size:2rem;font-weight:800;color:var(--text-1);letter-spacing:-.5px;" id="res-overall">—</div>
+                </div>
+                <div>
+                  <div style="font-size:.72rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Report ID</div>
+                  <span class="report-id" id="res-report-id">—</span>
+                </div>
+              </div>
+              <div style="margin-top:10px;font-size:.78rem;color:var(--text-3);" id="res-date"></div>
+            </div>
+          </div>
+
+          <!-- Section 2: Similarity Breakdown -->
+          <div class="card breakdown-card">
+            <div class="card-title">Section 2 — Similarity Breakdown</div>
+            <h3 style="font-size:.95rem;font-weight:700;color:var(--text-1);margin:10px 0 4px;">Similarity Breakdown</h3>
+            <p style="font-size:.78rem;color:var(--text-3);margin-bottom:4px;" id="breakdown-note"></p>
+
+            <div class="breakdown-list" id="breakdown-list">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Detection Details (full width) -->
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-title">Section 3 — Detection Details</div>
+          <h3 style="font-size:.95rem;font-weight:700;color:var(--text-1);margin:10px 0 4px;">Detection Details</h3>
+          <p style="font-size:.78rem;color:var(--text-3);margin-bottom:14px;">Actual similarities detected between the files</p>
+
+          <div class="details-list" id="details-list">
+            <!-- Populated by JS -->
+          </div>
+
+          <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-light);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:.82rem;font-weight:600;color:var(--text-2);">Detection Status:</span>
+            <span class="status-badge" id="res-status-badge">—</span>
+          </div>
+        </div>
+
+      </div><!-- /results-content -->
+
+    </main>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+<script src="{{ url_for('static', filename='js/storage.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script>
+  if (!Auth.requireAuth()) { /* stopped */ }
+  Sidebar.render('results');
+
+  // ── Load all comparisons from backend, then display ────────
+  let _allAnalyses = [];   // module-level cache used by renderResult()
+
+  async function initPage() {
+    let analyses;
+    try {
+      analyses = await API.getResults();
+    } catch (err) {
+      document.getElementById('no-results').style.display = '';
+      document.getElementById('no-results').querySelector('.empty-state-sub').textContent =
+        err.message;
+      return;
+    }
+
+    _allAnalyses = analyses;
+
+    if (!analyses.length) {
+      document.getElementById('no-results').style.display = '';
+      return;
+    }
+
+    document.getElementById('results-content').style.display = '';
+
+    const lastId   = API.getLastResultId();
+    const selector = document.getElementById('result-selector');
+
+    if (analyses.length > 1) {
+      document.getElementById('result-selector-wrap').style.display = '';
+      analyses.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.reportId;
+        opt.textContent = `${a.file1} ↔ ${a.file2} (${a.overallSimilarity}%)`;
+        selector.appendChild(opt);
+      });
+      if (lastId) selector.value = lastId;
+      selector.addEventListener('change', () => renderResult(selector.value));
+    }
+
+    const idToShow = (lastId && analyses.find(a => a.reportId === lastId))
+      ? lastId
+      : analyses[0].reportId;
+    if (analyses.length > 1) selector.value = idToShow;
+    renderResult(idToShow);
+  }
+
+  initPage();
+
+  function renderResult(id) {
+    const r = _allAnalyses.find(a => a.reportId === id);
+    if (!r) return;
+
+    const isPy = r.fileType === 'py';
+
+    document.getElementById('results-subtitle').textContent =
+      `Detailed similarity breakdown for ${r.file1} and ${r.file2}`;
+
+    document.getElementById('res-file1').textContent = r.file1;
+    document.getElementById('res-file2').textContent = r.file2;
+    document.getElementById('res-type1').textContent = isPy ? '🐍 Python File' : '📄 Text File';
+    document.getElementById('res-type2').textContent = isPy ? '🐍 Python File' : '📄 Text File';
+    document.getElementById('res-overall').textContent = r.overallSimilarity + '%';
+    document.getElementById('res-report-id').textContent = r.reportId;
+    document.getElementById('res-date').textContent = 'Analyzed on ' + r.analysisDate;
+
+    document.getElementById('breakdown-note').textContent = isPy
+      ? 'Prioritizing Code Structure, AST Pattern, and Logic Similarity for Python files'
+      : 'Prioritizing Text Similarity for text files';
+
+    // Breakdown bars
+    const metrics = isPy
+      ? [
+          { label: 'Code Structure',  value: r.codeStructure,   color: getBarColor(r.codeStructure) },
+          { label: 'AST Pattern',     value: r.astPattern,      color: getBarColor(r.astPattern) },
+          { label: 'Logic Similarity',value: r.logicSimilarity, color: getBarColor(r.logicSimilarity) },
+          { label: 'Text Similarity', value: r.textSimilarity,  color: getBarColor(r.textSimilarity) },
+        ]
+      : [
+          { label: 'Text Similarity', value: r.textSimilarity,  color: getBarColor(r.textSimilarity) },
+          { label: 'Content Pattern', value: r.astPattern,      color: getBarColor(r.astPattern) },
+          { label: 'Logic Similarity',value: r.logicSimilarity, color: getBarColor(r.logicSimilarity) },
+          { label: 'Structure Match', value: r.codeStructure,   color: getBarColor(r.codeStructure) },
+        ];
+
+    document.getElementById('breakdown-list').innerHTML = metrics.map(m => `
+      <div class="breakdown-item">
+        <div class="breakdown-label">
+          <span>${m.label}</span>
+          <span class="breakdown-pct">${m.value}%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill ${m.color}" style="width:${m.value}%"></div>
+        </div>
+      </div>
+    `).join('');
+
+    // Detection details
+    document.getElementById('details-list').innerHTML = (r.details || []).map(d => `
+      <div class="detail-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        ${d}
+      </div>
+    `).join('');
+
+    // Status badge
+    const badge = document.getElementById('res-status-badge');
+    const key   = r.classificationKey || classifyKey(r.overallSimilarity);
+    badge.className = `status-badge ${key}`;
+    badge.innerHTML = `<span class="dot" style="width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block;margin-right:4px;"></span>${r.classification}`;
+  }
+
+  function getBarColor(v) {
+    if (v >= 80) return 'danger';
+    if (v >= 70) return 'orange';
+    if (v >= 50) return 'warning';
+    return 'success';
+  }
+
+  function classifyKey(score) {
+    if (score >= 80) return 'duplicate';
+    if (score >= 70) return 'high';
+    if (score >= 50) return 'similar';
+    return 'low';
+  }
+</script>
+</body>
+</html>

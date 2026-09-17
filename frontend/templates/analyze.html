@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analyze – CodeTrace</title>
+  <meta name="description" content="Upload Python or text files to detect code and content duplication." />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <header class="top-bar">
+      <span class="top-bar-title">Analyze Files</span>
+      <div class="top-bar-actions">
+        <a href="dashboard.html" class="btn btn-outline btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Dashboard
+        </a>
+      </div>
+    </header>
+
+    <main class="page-body">
+      <div class="page-header">
+        <h1>Analyze Files</h1>
+        <p class="subtitle">Upload Python or Text files for similarity detection</p>
+      </div>
+
+      <!-- Upload Card -->
+      <div class="analyze-card">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Upload Your Files
+        </h2>
+
+        <!-- Error Alert -->
+        <div id="upload-error" class="alert alert-danger" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span id="upload-error-text"></span>
+        </div>
+
+        <!-- Drop Zone -->
+        <div class="upload-zone" id="drop-zone" role="button" tabindex="0" aria-label="Upload files">
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <h3>Drag &amp; drop your files here</h3>
+          <p>or</p>
+          <button class="btn btn-primary" id="browse-btn" type="button">Browse Files</button>
+          <input type="file" id="file-input" multiple accept=".py,.txt" style="display:none;" />
+          <p class="supported">Supported formats: <strong>.py</strong> and <strong>.txt</strong> only</p>
+        </div>
+      </div>
+
+      <!-- Selected Files Card -->
+      <div class="analyze-card" id="selected-files-card" style="display:none;">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+            <polyline points="13 2 13 9 20 9"/>
+          </svg>
+          Selected Files
+        </h2>
+
+        <div class="file-list" id="file-list"></div>
+
+        <div class="analysis-footer">
+          <div class="file-count-display" id="file-count-display">
+            <strong>0</strong> files selected
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-outline" id="clear-btn" type="button">Clear All</button>
+            <button class="btn btn-primary" id="analyze-btn" type="button" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              Start Analysis
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Card (hidden until analysis starts) -->
+      <div class="analyze-card" id="progress-card" style="display:none;">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          Analysis in Progress
+        </h2>
+
+        <div class="progress-steps" id="progress-steps">
+          <div class="step-item" data-step="upload">
+            <div class="step-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            Uploading Files
+          </div>
+          <div class="step-item" data-step="process">
+            <div class="step-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+              </svg>
+            </div>
+            Processing Files
+          </div>
+          <div class="step-item" data-step="ast">
+            <div class="step-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+              </svg>
+            </div>
+            AST Analysis
+          </div>
+          <div class="step-item" data-step="calc">
+            <div class="step-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/>
+                <line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/>
+              </svg>
+            </div>
+            Similarity Calculation
+          </div>
+          <div class="step-item" data-step="done">
+            <div class="step-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            Analysis Completed
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+<script src="{{ url_for('static', filename='js/storage.js') }}"></script>
+<script src="{{ url_for('static', filename='js/analyzer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script>
+  if (!Auth.requireAuth()) { /* stopped */ }
+  Sidebar.render('analyze');
+
+  // ── State ─────────────────────────────────────────────────────
+  let selectedFiles = []; // Array of { name, type, size, content, file }
+
+  // ── DOM refs ──────────────────────────────────────────────────
+  const dropZone      = document.getElementById('drop-zone');
+  const fileInput     = document.getElementById('file-input');
+  const browseBtn     = document.getElementById('browse-btn');
+  const fileList      = document.getElementById('file-list');
+  const fileCard      = document.getElementById('selected-files-card');
+  const progressCard  = document.getElementById('progress-card');
+  const analyzeBtn    = document.getElementById('analyze-btn');
+  const clearBtn      = document.getElementById('clear-btn');
+  const uploadError   = document.getElementById('upload-error');
+  const uploadErrText = document.getElementById('upload-error-text');
+
+  // ── Drop Zone Events ──────────────────────────────────────────
+  browseBtn.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('click', (e) => { if (e.target !== browseBtn) fileInput.click(); });
+  dropZone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    handleFileSelection([...e.dataTransfer.files]);
+  });
+
+  fileInput.addEventListener('change', () => {
+    handleFileSelection([...fileInput.files]);
+    fileInput.value = '';
+  });
+
+  // ── File Validation & Selection ───────────────────────────────
+  const ALLOWED = ['py', 'txt'];
+
+  function getExt(name) { return name.split('.').pop().toLowerCase(); }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function showError(msg) {
+    uploadErrText.textContent = msg;
+    uploadError.style.display = 'flex';
+    setTimeout(() => { uploadError.style.display = 'none'; }, 5000);
+  }
+
+  function handleFileSelection(files) {
+    let rejected = [];
+    let added    = 0;
+
+    files.forEach(f => {
+      const ext = getExt(f.name);
+      if (!ALLOWED.includes(ext)) {
+        rejected.push(f.name);
+        return;
+      }
+      // Avoid duplicates
+      if (selectedFiles.find(sf => sf.name === f.name)) return;
+      selectedFiles.push({ name: f.name, type: ext, size: f.size, file: f, content: null });
+      added++;
+    });
+
+    if (rejected.length) {
+      showError(`Only .py and .txt files are supported. Rejected: ${rejected.join(', ')}`);
+    }
+
+    if (added > 0) {
+      renderFileList();
+    }
+  }
+
+  function renderFileList() {
+    fileCard.style.display = selectedFiles.length ? '' : 'none';
+
+    const countDisplay = document.getElementById('file-count-display');
+    countDisplay.innerHTML = `<strong>${selectedFiles.length}</strong> file${selectedFiles.length !== 1 ? 's' : ''} selected`;
+
+    analyzeBtn.disabled = selectedFiles.length < 2;
+    if (selectedFiles.length === 1) {
+      analyzeBtn.title = 'At least 2 files required for comparison';
+    } else {
+      analyzeBtn.title = '';
+    }
+
+    fileList.innerHTML = selectedFiles.map((f, i) => {
+      const emoji = f.type === 'py' ? '🐍' : '📄';
+      return `
+        <div class="file-item" data-idx="${i}">
+          <span class="file-emoji">${emoji}</span>
+          <div class="file-info">
+            <div class="file-name">${f.name}</div>
+            <div class="file-meta">${formatSize(f.size)}</div>
+          </div>
+          <span class="file-tag ${f.type}">${f.type.toUpperCase()}</span>
+          <button class="file-remove" data-idx="${i}" title="Remove file" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>`;
+    }).join('');
+
+    // Remove buttons
+    fileList.querySelectorAll('.file-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx);
+        selectedFiles.splice(idx, 1);
+        renderFileList();
+      });
+    });
+  }
+
+  clearBtn.addEventListener('click', () => {
+    selectedFiles = [];
+    renderFileList();
+  });
+
+  // ── Analysis Steps ────────────────────────────────────────────
+  const STEPS = ['upload','process','ast','calc','done'];
+
+  function setStep(stepId, status) {
+    // status: 'active' | 'done'
+    const el = document.querySelector(`[data-step="${stepId}"]`);
+    if (!el) return;
+    el.classList.remove('active','done');
+    if (status) el.classList.add(status);
+  }
+
+  async function runAnalysis() {
+    analyzeBtn.disabled = true;
+    clearBtn.disabled   = true;
+    progressCard.style.display = '';
+    progressCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    setStep('upload',  'active');
+    await delay(350);
+    setStep('upload',  'done');
+
+    setStep('process', 'active');
+    await delay(400);
+    setStep('process', 'done');
+
+    setStep('ast',     'active');
+    await delay(300);
+    setStep('ast',     'done');
+
+    setStep('calc',    'active');
+
+    let results;
+    try {
+      // Send files to Flask backend – real AST analysis happens server-side
+      results = await API.analyze(selectedFiles);
+    } catch (err) {
+      setStep('calc', '');
+      analyzeBtn.disabled = false;
+      clearBtn.disabled   = false;
+      showError(err.message || 'Analysis failed. Is the backend running?');
+      progressCard.style.display = 'none';
+      return;
+    }
+
+    setStep('calc', 'done');
+    setStep('done', 'active');
+    await delay(300);
+    setStep('done', 'done');
+
+    await delay(600);
+    window.location.href = 'results.html';
+  }
+
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  analyzeBtn.addEventListener('click', () => {
+    if (selectedFiles.length < 2) return;
+    runAnalysis();
+  });
+</script>
+</body>
+</html>

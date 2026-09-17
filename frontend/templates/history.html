@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>History – CodeTrace</title>
+  <meta name="description" content="View all past analysis history in CodeTrace." />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <header class="top-bar">
+      <span class="top-bar-title">Analysis History</span>
+      <div class="top-bar-actions">
+        <a href="analyze.html" class="btn btn-primary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          New Analysis
+        </a>
+      </div>
+    </header>
+
+    <main class="page-body">
+      <div class="page-header">
+        <h1>Analysis History</h1>
+        <p class="subtitle">All completed similarity analyses</p>
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-history" style="display:none;">
+        <div class="card empty-state" style="padding:60px 32px;">
+          <div class="empty-state-icon">🕐</div>
+          <div class="empty-state-title">No analysis history yet</div>
+          <div class="empty-state-sub" style="margin-bottom:20px;">Completed analyses will appear here automatically</div>
+          <a href="analyze.html" class="btn btn-primary">Start Analysis</a>
+        </div>
+      </div>
+
+      <!-- History Table -->
+      <div id="history-table-wrap" style="display:none;">
+        <div class="data-table-wrap">
+          <table class="data-table" id="history-table">
+            <thead>
+              <tr>
+                <th>Report ID</th>
+                <th>File 1</th>
+                <th>File 2</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Similarity</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+<script src="{{ url_for('static', filename='js/storage.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script>
+  if (!Auth.requireAuth()) { /* stopped */ }
+  Sidebar.render('history');
+
+  function classifyKey(score) {
+    if (score >= 80) return 'duplicate';
+    if (score >= 70) return 'high';
+    if (score >= 50) return 'similar';
+    return 'low';
+  }
+
+  function buildRow(a) {
+    const key       = a.classificationKey || classifyKey(a.overallSimilarity);
+    const typeLabel = a.fileType === 'py' ? '🐍 Python' : '📄 Text';
+    return `
+      <tr>
+        <td><span class="report-id">${a.reportId}</span></td>
+        <td><span class="file-bold">${a.file1}</span></td>
+        <td><span class="file-bold">${a.file2}</span></td>
+        <td>${typeLabel}</td>
+        <td>${a.analysisDate}</td>
+        <td><span class="sim-badge ${key}">${a.overallSimilarity}%</span></td>
+        <td><span class="sim-badge ${key}">${a.classification}</span></td>
+        <td>
+          <button class="btn btn-outline btn-sm view-btn" data-id="${a.reportId}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            View
+          </button>
+        </td>
+      </tr>`;
+  }
+
+  async function initPage() {
+    let analyses;
+    try {
+      analyses = await API.getHistory();
+    } catch (err) {
+      document.getElementById('empty-history').style.display = '';
+      document.getElementById('empty-history').querySelector('.empty-state-sub').textContent = err.message;
+      return;
+    }
+
+    if (!analyses.length) {
+      document.getElementById('empty-history').style.display = '';
+      return;
+    }
+
+    document.getElementById('history-table-wrap').style.display = '';
+    const tbody = document.getElementById('history-tbody');
+    tbody.innerHTML = analyses.map(buildRow).join('');
+
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        API.setLastResultId(btn.dataset.id);
+        window.location.href = 'results.html';
+      });
+    });
+  }
+
+  initPage();
+</script>
+</body>
+</html>

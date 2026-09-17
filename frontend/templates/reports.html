@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reports – CodeTrace</title>
+  <meta name="description" content="Download and view detailed analysis reports from CodeTrace." />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+  <!-- SheetJS for real Excel export -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="app-shell">
+  <div id="sidebar-container"></div>
+
+  <div class="main-content">
+    <header class="top-bar">
+      <span class="top-bar-title">Reports</span>
+      <div class="top-bar-actions">
+        <button class="btn btn-outline btn-sm" id="export-all-btn" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export All (.xlsx)
+        </button>
+        <a href="analyze.html" class="btn btn-primary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          New Analysis
+        </a>
+      </div>
+    </header>
+
+    <main class="page-body">
+      <div class="page-header">
+        <h1>Reports</h1>
+        <p class="subtitle">Completed analysis reports — download as Excel</p>
+      </div>
+
+      <!-- Empty State -->
+      <div id="empty-reports" style="display:none;">
+        <div class="card empty-state" style="padding:60px 32px;">
+          <div class="empty-state-icon">📄</div>
+          <div class="empty-state-title">No reports available</div>
+          <div class="empty-state-sub" style="margin-bottom:20px;">Run an analysis to generate reports</div>
+          <a href="analyze.html" class="btn btn-primary">Start Analysis</a>
+        </div>
+      </div>
+
+      <!-- Reports Table -->
+      <div id="reports-table-wrap" style="display:none;">
+        <div class="data-table-wrap">
+          <table class="data-table" id="reports-table">
+            <thead>
+              <tr>
+                <th>Report ID</th>
+                <th>File 1</th>
+                <th>File 2</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th>Similarity</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="reports-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+<script src="{{ url_for('static', filename='js/storage.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script>
+  if (!Auth.requireAuth()) { /* stopped */ }
+  Sidebar.render('reports');
+
+  function classifyKey(score) {
+    if (score >= 80) return 'duplicate';
+    if (score >= 70) return 'high';
+    if (score >= 50) return 'similar';
+    return 'low';
+  }
+
+  function showToast(msg, type = 'success') {
+    const tc = document.getElementById('toast-container');
+    const t  = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+      ${msg}`;
+    tc.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+
+  function buildRow(a) {
+    const key       = a.classificationKey || classifyKey(a.overallSimilarity);
+    const typeLabel = a.fileType === 'py' ? '🐍 Python' : '📄 Text';
+    return `
+      <tr>
+        <td><span class="report-id">${a.reportId}</span></td>
+        <td><span class="file-bold">${a.file1}</span></td>
+        <td><span class="file-bold">${a.file2}</span></td>
+        <td>${typeLabel}</td>
+        <td>${a.analysisDate}</td>
+        <td><span class="sim-badge ${key}">${a.overallSimilarity}%</span></td>
+        <td><span class="sim-badge ${key}">${a.classification}</span></td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-outline btn-sm view-btn" data-id="${a.reportId}" title="View Details">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              View Details
+            </button>
+            <button class="btn btn-primary btn-sm dl-btn" data-id="${a.reportId}" title="Download Excel">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download Excel
+            </button>
+          </div>
+        </td>
+      </tr>`;
+  }
+
+  async function initPage() {
+    let analyses;
+    try {
+      analyses = await API.getReports();
+    } catch (err) {
+      document.getElementById('empty-reports').style.display = '';
+      document.getElementById('empty-reports').querySelector('.empty-state-sub').textContent = err.message;
+      return;
+    }
+
+    if (!analyses.length) {
+      document.getElementById('empty-reports').style.display = '';
+      return;
+    }
+
+    document.getElementById('reports-table-wrap').style.display = '';
+    document.getElementById('export-all-btn').style.display = '';
+
+    const tbody = document.getElementById('reports-tbody');
+    tbody.innerHTML = analyses.map(buildRow).join('');
+
+    // View buttons – navigate to results page
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        API.setLastResultId(btn.dataset.id);
+        window.location.href = 'results.html';
+      });
+    });
+
+    // Download per-report Excel from Flask backend
+    document.querySelectorAll('.dl-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = 'Downloading…';
+        try {
+          await API.downloadReport(btn.dataset.id);
+          showToast('Excel report downloaded successfully');
+        } catch (err) {
+          showToast(err.message, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download Excel`;
+        }
+      });
+    });
+
+    // Export all reports as a single Excel file from Flask backend
+    document.getElementById('export-all-btn').addEventListener('click', async function() {
+      this.disabled = true;
+      this.textContent = 'Exporting…';
+      try {
+        await API.downloadAll();
+        showToast('All reports exported successfully');
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        this.disabled = false;
+        this.textContent = 'Export All (.xlsx)';
+      }
+    });
+  }
+
+  initPage();
+</script>
+</body>
+</html>
