@@ -223,6 +223,17 @@ def get_all_comparisons() -> list[dict]:
     return [_row_to_dict(r) for r in rows]
 
 
+def clear_history() -> None:
+    """Delete all persisted analysis history and its tracked file records."""
+    conn = _connect()
+    try:
+        conn.execute("DELETE FROM comparisons")
+        conn.execute("DELETE FROM files")
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def get_comparison_by_id(report_id: str) -> dict | None:
     conn = _connect()
     row  = conn.execute(

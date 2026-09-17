@@ -16,6 +16,9 @@
     <header class="top-bar">
       <span class="top-bar-title">Analysis History</span>
       <div class="top-bar-actions">
+        <button class="btn btn-outline btn-sm" id="clear-history-btn" type="button">
+          Clear History
+        </button>
         <a href="analyze.html" class="btn btn-primary btn-sm">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -133,6 +136,24 @@
       });
     });
   }
+
+  document.getElementById('clear-history-btn').addEventListener('click', async () => {
+    const clearButton = document.getElementById('clear-history-btn');
+    if (!confirm('Clear all analysis history? This cannot be undone.')) return;
+
+    clearButton.disabled = true;
+    try {
+      await API.clearHistory();
+      Storage.clearHistory();
+      document.getElementById('history-tbody').innerHTML = '';
+      document.getElementById('history-table-wrap').style.display = 'none';
+      document.getElementById('empty-history').style.display = '';
+    } catch (err) {
+      alert(err.message || 'Could not clear analysis history.');
+    } finally {
+      clearButton.disabled = false;
+    }
+  });
 
   initPage();
 </script>

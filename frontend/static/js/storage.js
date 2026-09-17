@@ -32,6 +32,12 @@ const Storage = (() => {
     localStorage.removeItem(ANALYSES_KEY);
   }
 
+  function clearHistory() {
+    localStorage.removeItem(ANALYSES_KEY);
+    localStorage.removeItem(LAST_RES_KEY);
+    sessionStorage.clear();
+  }
+
   /* ── Last Result (for Results page) ─────────────────────── */
   function setLastResult(id) {
     localStorage.setItem(LAST_RES_KEY, id);
@@ -101,6 +107,7 @@ const Storage = (() => {
     saveAnalyses,
     getAnalysisById,
     clearAnalyses,
+    clearHistory,
     setLastResult,
     getLastResult,
     getDashboardStats

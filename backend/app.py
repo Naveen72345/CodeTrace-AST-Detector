@@ -16,6 +16,7 @@ Endpoints:
     GET    /api/results
     GET    /api/results/<report_id>
     GET    /api/history
+    POST   /api/clear-history
     GET    /api/reports
     GET    /api/reports/export/<report_id>
     GET    /api/reports/export-all
@@ -359,6 +360,14 @@ def get_history() -> tuple[Response, int]:
     if not _require_auth():
         return _err("Unauthorized.", 401)
     return jsonify(db.get_all_comparisons()), 200
+
+
+@app.post("/api/clear-history")
+def clear_history() -> tuple[Response, int]:
+    if not _require_auth():
+        return _err("Unauthorized.", 401)
+    db.clear_history()
+    return jsonify({"ok": True}), 200
 
 
 @app.get("/api/reports")

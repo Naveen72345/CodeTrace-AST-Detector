@@ -181,6 +181,11 @@
       return res.json();
     },
 
+    async clearHistory() {
+      const res = await req('POST', '/clear-history');
+      return res.json();
+    },
+
     /* ── Reports ───────────────────────────────────────────── */
     async getReports() {
       const res = await req('GET', '/reports');
