@@ -584,8 +584,10 @@ def health():
 #  ENTRY POINT
 # ─────────────────────────────────────────────────────────────
 
-if __name__ == "__main__":
+with app.app_context():
     db.init_db()
+
+if __name__ == "__main__":
     print("=" * 54)
     print("  CodeTrace Backend  –  http://localhost:5000")
     print("  Default login: admin / admin123")
